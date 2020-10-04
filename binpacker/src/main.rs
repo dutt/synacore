@@ -2,7 +2,6 @@ use std::io::prelude::*;
 use std::fs;
 use std::env;
 use std::path;
-use byteorder::{ByteOrder, LittleEndian};
 
 fn parse(input: &str) -> Vec<u16> {
     let parts : Vec<&str> = input.split(",").collect();
@@ -31,8 +30,9 @@ fn write(data : Vec<u8>, path : &path::Path) {
 fn convert(data : Vec<u16>) -> Vec<u8> {
     let mut buff = Vec::new();
     for d in data.iter() {
-        let mut bytes = [0;2];
-        LittleEndian::write_u16(&mut bytes, *d);
+        //let mut bytes = [0;2];
+        let bytes = d.to_le_bytes();
+        //LittleEndian::write_u16(&mut bytes, *d);
         for b in bytes.iter() {
             buff.push(*b);
         }
