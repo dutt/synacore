@@ -9,6 +9,12 @@ pub struct Program {
 }
 
 impl Program {
+    pub fn new() -> Program {
+        Program {
+            data : Vec::new(),
+            path : path::PathBuf::new(),
+        }
+    }
     pub fn parse_file(path : &path::Path) -> Program {
         let mut file = match fs::File::open(path) {
             Err(why) => panic!("Failed to open {} : {}", path.display(), why),
@@ -31,4 +37,14 @@ impl Program {
             path : path::PathBuf::from(path),
         }
     }
+}
+
+impl Clone for Program {
+    fn clone(&self) -> Program {
+        Program {
+            data : self.data.clone(),
+            path : path::PathBuf::from(&self.path),
+        }
+    }
+
 }

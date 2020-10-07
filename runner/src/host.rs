@@ -1,11 +1,11 @@
 use std::io;
-
 use std::collections::vec_deque;
 
 use log::{debug, info, error};
 
-use crate::opcodes::OpCodes;
+use messages::VmState;
 
+use crate::opcodes::OpCodes;
 use crate::program::Program;
 
 pub struct Host {
@@ -13,10 +13,10 @@ pub struct Host {
     stack : Vec<u16>,
     memory : Vec<u16>,
     ip : usize,
-    debug : bool,
-    run : bool,
     input_buffer : vec_deque::VecDeque<u16>,
-    count : u32, //number of instructions execued
+    run : bool,
+    count : u32, //number of instructions execued,
+    pub program : Program,
 }
 
 
@@ -39,12 +39,27 @@ impl Host {
             stack : Vec::new(),
             memory : Vec::new(),
             ip : 0,
-            debug : true,
-            run : true,
+            run : false,
             input_buffer : vec_deque::VecDeque::new(),
             count : 0,
+            program : Program::new(),
         }
     }
+    pub fn from(program : Program) -> Host {
+        let mut host = Host::new();
+        host.memory = Vec::new();
+        host.memory.resize(program.data.len(), 0);
+        for (idx, val) in program.data.iter().enumerate() {
+            host.memory[idx] = *val;
+        }
+        host.program = program;
+        host
+    }
+
+    pub fn create_state(&self) -> VmState {
+        VmState::from(self.registers, self.ip, self.count)
+    }
+
     fn resolve(&self, value : u16) -> u16 {
         match value {
             0..=32767 => value,
@@ -99,9 +114,7 @@ impl Host {
         }
     }
 
-    pub fn run(&mut self, program : Program) {
-        self.memory = Vec::from(program.data);
-        debug!("initial memory: {:?}", &self.memory[100..200]);
+    pub fn run(&mut self) {
         while self.ip < self.memory.len() && self.run {
             self.step();
         }
@@ -345,9 +358,7 @@ impl Host {
 
         if !is_memory(b) {
             let b2 = self.resolve(b);
-            if self.debug {
-                debug!("  rmem resolve b {} = {}", b, b2);
-            }
+            debug!("  rmem resolve b {} = {}", b, b2);
             b = b2;
         }
         let b = self.read(b);

@@ -1,5 +1,10 @@
+use std::fmt;
+
+// number of arguments for all except unknown
+// word value for unknown
+
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OpCodes {
     halt,
     set,
@@ -53,5 +58,38 @@ impl OpCodes {
             21 => OpCodes::nop,
             _ => OpCodes::unknown(val),
         }
+    }
+    pub fn argcount(&self) -> usize {
+        match self {
+            OpCodes::halt => 0,
+            OpCodes::set => 2,
+            OpCodes::push => 1,
+            OpCodes::pop => 1,
+            OpCodes::eq => 3,
+            OpCodes::gt => 3,
+            OpCodes::jmp => 1,
+            OpCodes::jt => 2,
+            OpCodes::jf => 2,
+            OpCodes::add => 3,
+            OpCodes::mult => 3,
+            OpCodes::mod_ => 3,
+            OpCodes::and => 3,
+            OpCodes::or => 3,
+            OpCodes::not => 2,
+            OpCodes::rmem => 2,
+            OpCodes::wmem => 2,
+            OpCodes::call => 1,
+            OpCodes::ret => 0,
+            OpCodes::out => 1,
+            OpCodes::in_ => 1,
+            OpCodes::nop => 0,
+            _ => panic!("argcount on unknown opcode"),
+        }
+    }
+}
+
+impl fmt::Display for OpCodes {
+    fn fmt(&self, f : &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

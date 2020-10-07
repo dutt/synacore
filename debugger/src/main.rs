@@ -3,7 +3,7 @@ use std::io::prelude::*;
 
 use std::net::{TcpStream, Shutdown};
 
-use messages::Command;
+use messages::{Command, Message, ResponseData};
 
 fn get_line() -> std::io::Result<String> {
     let mut line = String::new();
@@ -11,7 +11,9 @@ fn get_line() -> std::io::Result<String> {
     Ok(String::from(line.trim()))
 }
 
-fn send(data : Vec<u8>, stream : &mut TcpStream) -> std::io::Result<()> {
+fn send(cmd : Command, stream : &mut TcpStream) -> std::io::Result<()> {
+    let req = Message::Request(cmd);
+    let data = req.serialize();
     stream.write(&data)?;
     stream.flush()
 }
@@ -22,21 +24,45 @@ fn recv(stream : &mut TcpStream) -> std::io::Result<String> {
     Ok(String::from_utf8_lossy(&buffer[..numbytes]).into_owned())
 }
 
+fn recv_response(stream : &mut TcpStream) -> std::io::Result<ResponseData> {
+    let mut buffer = [0; 1024];
+    let numbytes = stream.read(&mut buffer)?;
+    let response = Message::deserialize(&buffer[..numbytes]);
+    match response {
+        Message::Response(data) => Ok(data),
+        _ => panic!("Message not a response: {:?}", response),
+    }
+}
+
+fn handle_step(stream : &mut TcpStream) -> std::io::Result<bool> {
+    send(Command::Step, stream)?;
+    let data = recv_response(stream)?;
+    match data {
+        ResponseData::State(state) => {
+            println!("{}/{}", state.ip, state.count);
+        }
+        _ => panic!("no response to step {:?}", data),
+    }
+    Ok(false)
+}
+
+fn handle_run(stream : &mut TcpStream) -> std::io::Result<bool> {
+    send(Command::Run, stream)?;
+    Ok(false)
+}
+
 fn handle_quit(stream : &mut TcpStream) -> std::io::Result<bool> {
-    send(Command::Quit.serialize(), stream)?;
+    send(Command::Quit, stream)?;
     stream.shutdown(Shutdown::Both)?;
     Ok(true)
 }
 
-fn handle_run(stream : &mut TcpStream) -> std::io::Result<bool> {
-    send(Command::Run.serialize(), stream)?;
-    Ok(false)
-}
 
 fn handle(cmd : Command, stream : &mut TcpStream) -> std::io::Result<bool> {
     match cmd {
         Command::Quit => handle_quit(stream),
         Command::Run => handle_run(stream),
+        Command::Step => handle_step(stream),
         _ => panic!("unknown command {:?}", cmd),
     }
 }
