@@ -1,14 +1,17 @@
-use std::io::prelude::*;
-use std::fs;
 use std::env;
+use std::fs;
+use std::io::prelude::*;
 use std::path;
 
 fn parse(input: &str) -> Vec<u16> {
-    let parts : Vec<&str> = input.split(",").collect();
-    parts.iter().map(|p| p.trim().parse::<u16>().unwrap()).collect()
+    let parts: Vec<&str> = input.split(",").collect();
+    parts
+        .iter()
+        .map(|p| p.trim().parse::<u16>().unwrap())
+        .collect()
 }
 
-fn get_outpath(inpath : &str) -> path::PathBuf {
+fn get_outpath(inpath: &str) -> path::PathBuf {
     let inp = path::Path::new(inpath);
     let inp = inp.canonicalize().unwrap();
     let mut retr = path::PathBuf::from(inp);
@@ -16,7 +19,7 @@ fn get_outpath(inpath : &str) -> path::PathBuf {
     retr
 }
 
-fn write(data : Vec<u8>, path : &path::Path) {
+fn write(data: Vec<u8>, path: &path::Path) {
     let mut file = match fs::File::create(path) {
         Err(why) => panic!("Could not create file {} : {}", path.display(), why),
         Ok(file) => file,
@@ -27,7 +30,7 @@ fn write(data : Vec<u8>, path : &path::Path) {
     }
 }
 
-fn convert(data : Vec<u16>) -> Vec<u8> {
+fn convert(data: Vec<u16>) -> Vec<u8> {
     let mut buff = Vec::new();
     for d in data.iter() {
         //let mut bytes = [0;2];
@@ -45,7 +48,7 @@ fn main() {
     println!("args {:?}", args);
     if args.len() < 2 {
         println!("No input file specified");
-        return
+        return;
     }
 
     let file = &args[1];

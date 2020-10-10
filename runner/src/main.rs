@@ -1,29 +1,29 @@
+use std::env;
 use std::io::Write;
 use std::path;
-use std::env;
 
 #[macro_use]
 extern crate log;
 
 use env_logger::{Builder, Target};
 
-mod opcodes;
-mod host;
-mod program;
 mod debugserver;
+mod host;
+
+use code::program;
 
 struct Config {
-    filename : path::PathBuf
+    filename: path::PathBuf,
 }
 
 impl Config {
-    fn new(args : &[String]) -> Config {
+    fn new(args: &[String]) -> Config {
         if args.len() < 2 {
             panic!("No binary supplied");
         }
         let filename = args[1].clone();
         Config {
-            filename : path::PathBuf::from(filename)
+            filename: path::PathBuf::from(filename),
         }
     }
 }
@@ -32,12 +32,10 @@ fn main() {
     // init logging
     Builder::from_default_env()
         .target(Target::Stdout)
-        .format(|buf, record| {
-            writeln!(buf, "{}", record.args())
-        })
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
 
-    let args : Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     let config = Config::new(&args);
     info!("Running file {}", config.filename.display());
 

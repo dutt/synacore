@@ -1,74 +1,96 @@
 use std::io;
 use std::io::prelude::*;
 
-use std::net::{TcpStream, Shutdown};
+use std::net::{Shutdown, TcpStream};
 
-use messages::{Command, Message, ResponseData};
+use code::decompile;
+use messages::{Command, Message, ResponseData, VmState};
 
 fn get_line() -> std::io::Result<String> {
+    print!("> ");
+    io::stdout().flush()?;
     let mut line = String::new();
     io::stdin().read_line(&mut line)?;
     Ok(String::from(line.trim()))
 }
 
-fn send(cmd : Command, stream : &mut TcpStream) -> std::io::Result<()> {
+fn send(cmd: Command, stream: &mut TcpStream) -> std::io::Result<()> {
     let req = Message::Request(cmd);
     let data = req.serialize();
+    let len: u64 = data.len() as u64;
+    stream.write(&len.to_le_bytes())?;
     stream.write(&data)?;
     stream.flush()
 }
 
-fn recv(stream : &mut TcpStream) -> std::io::Result<String> {
-    let mut buffer = [0; 1024];
-    let numbytes = stream.read(&mut buffer)?;
-    Ok(String::from_utf8_lossy(&buffer[..numbytes]).into_owned())
-}
+fn recv_response(stream: &mut TcpStream) -> std::io::Result<Vec<ResponseData>> {
+    // length
+    let mut buffer = [0; 8];
+    let numbytes = stream.take(8).read(&mut buffer)?;
+    if numbytes == 0 {
+        return Ok(vec![ResponseData::Empty]);
+    }
+    assert_eq!(numbytes, 8);
+    let len = u64::from_le_bytes(buffer);
 
-fn recv_response(stream : &mut TcpStream) -> std::io::Result<ResponseData> {
-    let mut buffer = [0; 1024];
-    let numbytes = stream.read(&mut buffer)?;
-    let response = Message::deserialize(&buffer[..numbytes]);
+    // data
+    let mut data = Vec::new();
+    stream.take(len).read_to_end(&mut data)?;
+    let response = Message::deserialize(&data);
     match response {
-        Message::Response(data) => Ok(data),
+        Message::Response(data) => Ok(vec![data]),
+        Message::Responses(datas) => Ok(datas),
         _ => panic!("Message not a response: {:?}", response),
     }
 }
 
-fn handle_step(stream : &mut TcpStream) -> std::io::Result<bool> {
-    send(Command::Step, stream)?;
-    let data = recv_response(stream)?;
+fn print_state(state: VmState) {
+    let opdata = decompile::parse_data_offset(Vec::from(state.here), state.ip);
+    let text = decompile::serialize(opdata);
+    println!("{}/{} : {}", state.ip, state.count, text);
+}
+
+fn handle_response(data: ResponseData) {
     match data {
-        ResponseData::State(state) => {
-            println!("{}/{}", state.ip, state.count);
-        }
-        _ => panic!("no response to step {:?}", data),
+        ResponseData::Text(content) => println!("{}", content),
+        ResponseData::State(state) => print_state(state),
+        _ => panic!("no response {:?}", data),
     }
-    Ok(false)
 }
-
-fn handle_run(stream : &mut TcpStream) -> std::io::Result<bool> {
-    send(Command::Run, stream)?;
-    Ok(false)
-}
-
-fn handle_quit(stream : &mut TcpStream) -> std::io::Result<bool> {
+fn handle_quit(stream: &mut TcpStream) -> std::io::Result<bool> {
     send(Command::Quit, stream)?;
     stream.shutdown(Shutdown::Both)?;
     Ok(true)
 }
 
+fn handle_default(
+    cmd: Command,
+    stream: &mut TcpStream,
+    response_count: usize,
+) -> std::io::Result<bool> {
+    send(cmd, stream)?;
+    for _ in 0..response_count {
+        for r in recv_response(stream)? {
+            handle_response(r);
+        }
+    }
+    Ok(false)
+}
 
-fn handle(cmd : Command, stream : &mut TcpStream) -> std::io::Result<bool> {
+fn handle(cmd: Command, stream: &mut TcpStream) -> std::io::Result<bool> {
     match cmd {
         Command::Quit => handle_quit(stream),
-        Command::Run => handle_run(stream),
-        Command::Step => handle_step(stream),
+        Command::Run => handle_default(cmd, stream, 2),
+        Command::Step => handle_default(cmd, stream, 1),
+        Command::Continue => handle_default(cmd, stream, 2),
+        Command::AddBreakpoint(_) => handle_default(cmd, stream, 1),
+        Command::RemoveBreakpoint(_) => handle_default(cmd, stream, 1),
         _ => panic!("unknown command {:?}", cmd),
     }
 }
 
-fn run(stream : &mut TcpStream) -> std::io::Result<()> {
-    let mut buffer = [0;1024];
+fn run(stream: &mut TcpStream) -> std::io::Result<()> {
+    let mut buffer = [0; 1024];
     stream.read(&mut buffer)?;
     let greeting = String::from_utf8_lossy(&buffer[..]);
     println!("{}", greeting);
@@ -90,7 +112,7 @@ fn main() {
         Ok(mut stream) => {
             println!("connected");
             match run(&mut stream) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => panic!("Error durring network {}", e),
             }
         }

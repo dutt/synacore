@@ -24,6 +24,10 @@ version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "code"
+version = "0.1.0"
+
+[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -128,6 +132,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "runner"
 version = "0.1.0"
 dependencies = [
+ "code 0.1.0",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "messages 0.1.0",

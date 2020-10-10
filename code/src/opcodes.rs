@@ -32,7 +32,7 @@ pub enum OpCodes {
 }
 
 impl OpCodes {
-    pub fn parse(val : u16) -> OpCodes {
+    pub fn parse(val: u16) -> OpCodes {
         match val {
             0 => OpCodes::halt,
             1 => OpCodes::set,
@@ -89,7 +89,7 @@ impl OpCodes {
 }
 
 impl fmt::Display for OpCodes {
-    fn fmt(&self, f : &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }

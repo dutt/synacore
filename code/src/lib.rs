@@ -1,5 +1,6 @@
-pub mod program;
+pub mod decompile;
 pub mod opcodes;
+pub mod program;
 
 #[cfg(test)]
 mod tests {
