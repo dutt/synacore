@@ -59,6 +59,7 @@ fn print_dump(address : usize, data : Vec<u16>) {
 
 fn handle_response(data: ResponseData) {
     match data {
+        ResponseData::Empty => {},
         ResponseData::Text(content) => println!("{}", content),
         ResponseData::State(state) => print_state(state),
         ResponseData::Dump(address, data) => print_dump(address, data),
