@@ -5,7 +5,8 @@ use log::{debug, error, info};
 
 use crate::host;
 use code::program;
-use messages::{Command, Message, ResponseData};
+use messages::command::Command;
+use messages::{Message, ResponseData};
 
 fn send(data: &[u8], stream: &mut TcpStream) -> std::io::Result<()> {
     let len: u64 = data.len() as u64;
@@ -111,6 +112,9 @@ impl Debugserver {
             Command::Step => self.handle_step(stream),
             Command::Continue => self.handle_continue(stream),
             Command::AddBreakpoint(address) => self.handle_add_breakpoint(address, stream),
+            Command::RemoveBreakpoint(address) => self.handle_remove_breakpoint(address, stream),
+            Command::PrintRegister(reg) => self.handle_print_register(stream),
+            Command::PrintMemory(address, len) => self.handle_print_memory(address, len, stream),
             _ => panic!("unknown command {:?}", cmd),
         }
     }
@@ -163,16 +167,42 @@ impl Debugserver {
         Ok(false)
     }
 
-    fn breakpoint_hit(&mut self, last_ip: usize) -> bool {
+    fn handle_remove_breakpoint(
+        &mut self,
+        address: usize,
+        stream: &mut TcpStream,
+    ) -> std::io::Result<bool> {
+        if self.breakpoints.contains(&address) {
+            self.breakpoints.remove(address);
+            send_string(format!("Breakpint at {} removed", address), stream)?;
+        } else {
+            send_string(format!("No breakpint at {}", address), stream)?;
+        }
+        Ok(false)
+    }
+
+    fn handle_print_register(&mut self, stream : &mut TcpStream) -> std::io::Result<bool> {
+        let state = self.host.create_state();
+        send_response(ResponseData::State(state), stream)?;
+        Ok(false)
+    }
+
+    fn handle_print_memory(&mut self, address : usize, len : usize, stream : &mut TcpStream) -> std::io::Result<bool> {
+        let dump = self.host.create_memory_dump(address, address+len);
+        send_response(ResponseData::Dump(dump), stream)?;
+        Ok(false)
+    }
+
+    fn breakpoint_hit(&mut self, _last_ip: usize) -> bool {
         for &bp in &self.breakpoints {
             if bp == self.host.ip() {
                 self.hit_breakpoint = bp;
                 return true;
             }
-            if last_ip < bp && self.host.ip() > bp {
-                self.hit_breakpoint = bp;
-                return true; // ip not on an actual instruction
-            }
+            //if last_ip < bp && self.host.ip() > bp {
+            //    self.hit_breakpoint = bp;
+            //    return true; // ip not on an actual instruction
+            //}
         }
         false
     }

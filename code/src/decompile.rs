@@ -52,7 +52,6 @@ impl fmt::Display for OpData {
 }
 
 fn parse_op(code: &OpCodes, data: &[u16], idx: usize, argcount: usize) -> OpData {
-    println!("opcode {:?} has {} args", code, argcount);
     let mut retr = OpData::from(code.clone(), idx);
     if argcount == 0 {
         return retr;

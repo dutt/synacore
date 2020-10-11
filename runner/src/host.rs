@@ -68,6 +68,10 @@ impl Host {
         )
     }
 
+    pub fn create_memory_dump(&self, address : usize, len : usize) -> Vec<u16> {
+        Vec::from(&self.memory[address..address+len])
+    }
+
     fn resolve(&self, value: u16) -> u16 {
         match value {
             0..=32767 => value,

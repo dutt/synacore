@@ -4,7 +4,8 @@ use std::io::prelude::*;
 use std::net::{Shutdown, TcpStream};
 
 use code::decompile;
-use messages::{Command, Message, ResponseData, VmState};
+use messages::command::Command;
+use messages::{Message, ResponseData, VmState};
 
 fn get_line() -> std::io::Result<String> {
     print!("> ");
@@ -45,7 +46,7 @@ fn recv_response(stream: &mut TcpStream) -> std::io::Result<Vec<ResponseData>> {
 }
 
 fn print_state(state: VmState) {
-    let opdata = decompile::parse_data_offset(Vec::from(state.here), state.ip);
+    let opdata = decompile::parse_data(Vec::from(state.here));
     let text = decompile::serialize(opdata);
     println!("{}/{} : {}", state.ip, state.count, text);
 }
@@ -96,14 +97,17 @@ fn run(stream: &mut TcpStream) -> std::io::Result<()> {
     println!("{}", greeting);
     loop {
         let line = get_line()?;
-        let cmd = Command::parse(&line);
-        if let Ok(do_quit) = handle(cmd, stream) {
-            if do_quit {
-                break;
-            }
+        match Command::parse(&line) {
+            Ok(cmd) => {
+                if let Ok(do_quit) = handle(cmd, stream) {
+                    if do_quit {
+                        break;
+                    }
+                }
+            },
+            Err(what) => println!("{}", what),
         }
     }
-
     Ok(())
 }
 
