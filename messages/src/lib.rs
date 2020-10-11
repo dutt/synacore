@@ -26,7 +26,7 @@ pub enum ResponseData {
     Empty,
     Text(String),
     State(VmState),
-    Dump(Vec<u16>),
+    Dump(usize, Vec<u16>),
 }
 
 impl ResponseData {

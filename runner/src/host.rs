@@ -457,6 +457,7 @@ impl Host {
         }
         let val = self.input_buffer.pop_front().unwrap();
         debug!("  writing {}/{} at {}", val, val as u8 as char, a);
+        self.write(a, val);
         self.ip += 1;
     }
 }

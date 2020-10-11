@@ -105,6 +105,7 @@ impl Debugserver {
     }
 
     fn handle_cmd(&mut self, cmd: Command, stream: &mut TcpStream) -> std::io::Result<bool> {
+        info!("got command {:?}", cmd);
         match cmd {
             Command::None => Ok(false),
             Command::Quit => self.handle_quit(stream),
@@ -113,7 +114,7 @@ impl Debugserver {
             Command::Continue => self.handle_continue(stream),
             Command::AddBreakpoint(address) => self.handle_add_breakpoint(address, stream),
             Command::RemoveBreakpoint(address) => self.handle_remove_breakpoint(address, stream),
-            Command::PrintRegister(reg) => self.handle_print_register(stream),
+            Command::PrintRegister(_) => self.handle_print_register(stream),
             Command::PrintMemory(address, len) => self.handle_print_memory(address, len, stream),
             _ => panic!("unknown command {:?}", cmd),
         }
@@ -189,7 +190,7 @@ impl Debugserver {
 
     fn handle_print_memory(&mut self, address : usize, len : usize, stream : &mut TcpStream) -> std::io::Result<bool> {
         let dump = self.host.create_memory_dump(address, address+len);
-        send_response(ResponseData::Dump(dump), stream)?;
+        send_response(ResponseData::Dump(address, dump), stream)?;
         Ok(false)
     }
 

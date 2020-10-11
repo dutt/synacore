@@ -8,62 +8,62 @@ peg::parser! {
             usize::from_str_radix(digits, 10).unwrap()
         }
 
-        rule run() -> Result<Command, String>
-            = "run" { Ok(Command::Run) }
-            / "r" { Ok(Command::Run) }
-        rule step() -> Result<Command, String>
-            = "step" { Ok(Command::Step) }
-            / "s" { Ok(Command::Step) }
-        rule continue() -> Result<Command, String>
-            = "continue" { Ok(Command::Continue) }
-            / "c" { Ok(Command::Continue) }
-        rule quit() -> Result<Command, String>
-            = "quit" { Ok(Command::Quit) }
-            / "q" { Ok(Command::Quit) }
+        rule run() -> Command
+            = "run" {? Ok(Command::Run) }
+            / "r" {? Ok(Command::Run) }
+        rule step() -> Command
+            = "step" {? Ok(Command::Step) }
+            / "s" {? Ok(Command::Step) }
+        rule continue() -> Command
+            = "continue" {? Ok(Command::Continue) }
+            / "c" {? Ok(Command::Continue) }
+        rule quit() -> Command
+            = "quit" {? Ok(Command::Quit) }
+            / "q" {? Ok(Command::Quit) }
 
-        rule add_bp() -> Result<Command, String>
-            = "b " addr:number() {
+        rule add_bp() -> Command
+            = "b " addr:number() {?
                 Ok(Command::AddBreakpoint(addr))
             }
-        rule del_bp() -> Result<Command, String>
-            = "del " addr:number() {
+        rule del_bp() -> Command
+            = "del " addr:number() {?
                 Ok(Command::RemoveBreakpoint(addr))
             }
 
-        rule print_reg() -> Result<Command, String>
-            = "p reg " regnum:number() {
+        rule print_reg() -> Command
+            = "p reg " regnum:number() {?
                 if regnum <= 8 {
                     Ok(Command::PrintRegister(regnum))
                 } else {
-                    Err(format!("{} is not a valid register", regnum))
+                    Err("Not a valid register")
                 }
             }
-            / "pr " regnum:number() {
+            / "pr " regnum:number() {?
                 if regnum <= 8 {
                     Ok(Command::PrintRegister(regnum))
                 } else {
-                    Err(format!("{} is not a valid register", regnum))
+                    Err("Not a valid register")
                 }
             }
-        rule print_mem() -> Result<Command, String>
-            = "p mem " addr:number() " " len:number() {
+        rule print_mem() -> Command
+            = "p mem " addr:number() " " len:number() {?
                 Ok(Command::PrintMemory(addr, len))
             }
-            / "p mem " addr:number() {
+            / "p mem " addr:number() {?
                 Ok(Command::PrintMemory(addr, 1))
             }
-            / "pm " addr:number() " " len:number() {
+            / "pm " addr:number() " " len:number() {?
                 Ok(Command::PrintMemory(addr, len))
             }
-            / "pm " addr:number() {
+            / "pm " addr:number() {?
                 Ok(Command::PrintMemory(addr, 1))
             }
-        rule print() -> Result<Command, String>
+        rule print() -> Command
             = print_reg()
             / print_mem()
             / expected!("Failed to print command")
 
-        pub rule parse_command() -> Result<Command, String>
+        pub rule parse_command() -> Command
             = run()
             / step()
             / continue()
@@ -92,8 +92,9 @@ pub enum Command {
 
 impl Command {
     pub fn parse(text: &str) -> Result<Command, String> {
-        match parse_command(text) {
-            Ok(cmd) => cmd,
+        let parse_result = parse_command(text);
+        match parse_result {
+            Ok(cmd) => Ok(cmd),
             Err(what) => Err(format!("failed to parse command '{}': {:?}", text, what)),
         }
     }

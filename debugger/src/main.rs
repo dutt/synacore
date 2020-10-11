@@ -47,14 +47,21 @@ fn recv_response(stream: &mut TcpStream) -> std::io::Result<Vec<ResponseData>> {
 
 fn print_state(state: VmState) {
     let opdata = decompile::parse_data(Vec::from(state.here));
-    let text = decompile::serialize(opdata);
-    println!("{}/{} : {}", state.ip, state.count, text);
+    let optext = decompile::serialize(opdata);
+    let regtext : Vec<String> = state.registers.iter().enumerate().map(|(idx, regval)| format!("r{}:{}",idx, regval)).collect();
+    println!("{}/{}, regs {}\n{}", state.ip, state.count, regtext.join(", "), optext);
+}
+
+fn print_dump(address : usize, data : Vec<u16>) {
+    println!("Memory from {}", address);
+    println!("{:?}", data);
 }
 
 fn handle_response(data: ResponseData) {
     match data {
         ResponseData::Text(content) => println!("{}", content),
         ResponseData::State(state) => print_state(state),
+        ResponseData::Dump(address, data) => print_dump(address, data),
         _ => panic!("no response {:?}", data),
     }
 }
@@ -86,6 +93,8 @@ fn handle(cmd: Command, stream: &mut TcpStream) -> std::io::Result<bool> {
         Command::Continue => handle_default(cmd, stream, 2),
         Command::AddBreakpoint(_) => handle_default(cmd, stream, 1),
         Command::RemoveBreakpoint(_) => handle_default(cmd, stream, 1),
+        Command::PrintRegister(_) => handle_default(cmd, stream, 1),
+        Command::PrintMemory(_, _) => handle_default(cmd, stream, 1),
         _ => panic!("unknown command {:?}", cmd),
     }
 }
@@ -95,10 +104,16 @@ fn run(stream: &mut TcpStream) -> std::io::Result<()> {
     stream.read(&mut buffer)?;
     let greeting = String::from_utf8_lossy(&buffer[..]);
     println!("{}", greeting);
+    let mut last_line = String::new();
     loop {
         let line = get_line()?;
-        match Command::parse(&line) {
+        let run_line = match line.as_ref() {
+            "" => last_line.clone(),
+            _ => line,
+        };
+        match Command::parse(&run_line) {
             Ok(cmd) => {
+                last_line = run_line;
                 if let Ok(do_quit) = handle(cmd, stream) {
                     if do_quit {
                         break;
