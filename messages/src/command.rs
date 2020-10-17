@@ -78,7 +78,6 @@ use crate::command::command_grammar::parse_command;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Command {
-    //common
     None,
     Run,
     Step,
